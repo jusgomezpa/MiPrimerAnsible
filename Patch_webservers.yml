@@ -7,13 +7,13 @@
 
     - name: Check and install yum-utils
       ansible.builtin.dnf:
-        name=yum-utils
-        state=present
+        name: yum-utils
+        state: present
 
     - name: Patching servers
       ansible.builtin.dnf:
-        name = '*'
-        state = latest
+        name: '*'
+        state: latest
       register: yum_result
 
     - name: Check if a reboot is required
