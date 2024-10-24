@@ -1,7 +1,7 @@
 ---
 - name: Un playbook muy muy sencillo
   # A quienes se les va a operar 
-  hosts: all
+  hosts: web
   tasks:
     - name: Dame un mensaje
       ansible.builtin.debug:
