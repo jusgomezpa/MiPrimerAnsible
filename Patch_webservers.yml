@@ -1,0 +1,27 @@
+---
+- name: Patching servers
+  # Patching only web servers
+  hosts: web
+  become: yes
+  tasks:
+
+    - name: Check and install yum-utils
+      ansible.builtin.dnf:
+        name=yum-utils
+        state=present
+
+    - name: Patching servers
+      ansible.builtin.dnf:
+        name = '*'
+        state = latest
+      register: yum_result
+
+    - name: Check if a reboot is required
+      command: /usr/bin/needs-restarting -r
+      register: reboot_check
+      failed_when: reboot_check.rc not in [0, 1]  # It will return 1 if reboot is needed.
+      changed_when: reboot_check.rc == 1
+
+    - name: Reboot the server if required
+      reboot:
+      when: reboot_check.rc == 1
