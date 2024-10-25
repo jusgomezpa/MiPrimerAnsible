@@ -1,73 +1,76 @@
+---
+- name: Check and apply some CIS rules
+  # A quienes se les va a operar 
+  hosts: web
+  tasks:
+    - name: Test for existence /etc/motd
+    stat:
+        path: /etc/motd
+    register: file_exists
 
+    - name: Ensure PAM Enforces Password Requirements - Minimum Length - Ensure PAM variable minlen is set accordingly
+    ansible.builtin.lineinfile:
+        create: true
+        dest: /etc/security/pwquality.conf
+        regexp: ^#?\s*minlen
+        line: minlen = '14'
 
-- name: Test for existence /etc/motd
-  stat:
-    path: /etc/motd
-  register: file_exists
+    - name: Set Password Hashing Algorithm in /etc/libuser.conf
+    lineinfile:
+        dest: /etc/libuser.conf
+        insertafter: ^\s*\[defaults]
+        regexp: ^#?crypt_style
+        line: crypt_style = sha512
+        state: present
+        create: true
 
-- name: Ensure PAM Enforces Password Requirements - Minimum Length - Ensure PAM variable minlen is set accordingly
-  ansible.builtin.lineinfile:
-    create: true
-    dest: /etc/security/pwquality.conf
-    regexp: ^#?\s*minlen
-    line: minlen = {{ var_password_pam_minlen }}
+    - name: Ensure sudo is installed
+    package:
+        name: sudo
+        state: present
 
-- name: Set Password Hashing Algorithm in /etc/libuser.conf
-  lineinfile:
-    dest: /etc/libuser.conf
-    insertafter: ^\s*\[defaults]
-    regexp: ^#?crypt_style
-    line: crypt_style = sha512
-    state: present
-    create: true
+    - name: Configure System Cryptography Policy
+    lineinfile:
+        path: /etc/crypto-policies/config
+        regexp: ^(?!#)(\S+)$
+        line: 'DEFAULT'
+        create: true
 
-- name: Ensure sudo is installed
-  package:
-    name: sudo
-    state: present
+    - name: Require Re-Authentication When Using the sudo Command - Find /etc/sudoers.d/* files containing 'Defaults timestamp_timeout'
+    ansible.builtin.find:
+        path: /etc/sudoers.d
+        patterns: '*'
+        contains: ^[\s]*Defaults\s.*\btimestamp_timeout[\s]*=.*
+    register: sudoers_d_defaults_timestamp_timeout
 
-- name: Configure System Cryptography Policy
-  lineinfile:
-    path: /etc/crypto-policies/config
-    regexp: ^(?!#)(\S+)$
-    line: 'DEFAULT'
-    create: true
+    - name: List /etc/sysctl.d/*.conf files
+    find:
+        paths:
+        - /etc/sysctl.d/
+        - /run/sysctl.d/
+        - /usr/local/lib/sysctl.d/
+        contains: ^[\s]*net.ipv6.conf.all.forwarding.*$
+        patterns: '*.conf'
+        file_type: any
+    register: find_sysctl_d
 
-- name: Require Re-Authentication When Using the sudo Command - Find /etc/sudoers.d/* files containing 'Defaults timestamp_timeout'
-  ansible.builtin.find:
-    path: /etc/sudoers.d
-    patterns: '*'
-    contains: ^[\s]*Defaults\s.*\btimestamp_timeout[\s]*=.*
-  register: sudoers_d_defaults_timestamp_timeout
+    - name: Check if umask in /etc/bashrc is already set
+    ansible.builtin.lineinfile:
+        path: /etc/bashrc
+        regexp: ^(\s*)umask\s+.*
+        state: absent
+    check_mode: true
+    changed_when: false
+    register: umask_replace
 
-- name: List /etc/sysctl.d/*.conf files
-  find:
-    paths:
-    - /etc/sysctl.d/
-    - /run/sysctl.d/
-    - /usr/local/lib/sysctl.d/
-    contains: ^[\s]*net.ipv6.conf.all.forwarding.*$
-    patterns: '*.conf'
-    file_type: any
-  register: find_sysctl_d
+    - name: Set Password Maximum Age
+    lineinfile:
+        create: true
+        dest: /etc/login.defs
+        regexp: ^#?PASS_MAX_DAYS
+        line: PASS_MAX_DAYS 90
 
-- name: Check if umask in /etc/bashrc is already set
-  ansible.builtin.lineinfile:
-    path: /etc/bashrc
-    regexp: ^(\s*)umask\s+.*
-    state: absent
-  check_mode: true
-  changed_when: false
-  register: umask_replace
-
-- name: Set Password Maximum Age
-  lineinfile:
-    create: true
-    dest: /etc/login.defs
-    regexp: ^#?PASS_MAX_DAYS
-    line: PASS_MAX_DAYS 90
-
-- name: Ensure aide is installed
-  package:
-    name: aide
-    state: present
+    - name: Ensure aide is installed
+    package:
+        name: aide
+        state: present
