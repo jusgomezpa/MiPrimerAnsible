@@ -2,6 +2,7 @@
 - name: Check and apply some CIS rules
   # A quienes se les va a operar 
   hosts: web
+  become: yes
   tasks:
     - name: Test for existence /etc/motd
       stat:
