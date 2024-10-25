@@ -1,3 +1,5 @@
+
+
 - name: Test for existence /etc/motd
   stat:
     path: /etc/motd
