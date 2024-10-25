@@ -60,8 +60,8 @@
         path: /etc/bashrc
         regexp: ^(\s*)umask\s+.*
         state: absent
-        check_mode: true
-        changed_when: false
+      check_mode: true
+      changed_when: false
       register: umask_replace
 
     - name: Set Password Maximum Age
